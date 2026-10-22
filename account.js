@@ -345,15 +345,15 @@
       const code = ownRows[0]?.referral_code || fallbackCode;
       if (codeNode) codeNode.textContent = code;
       localStorage.setItem(`paywork_invite_${identity(session)}`, code);
-      const response = await window.authenticatedPayWorkFetch(`${base}/rest/v1/profiles?select=id,full_name,email,phone,role,age,gender,referral_work_started_at,referral_bonus_confirmed&referred_by=eq.${encodeURIComponent(session.user.id)}&order=created_at.desc`);
+      const response = await window.authenticatedPayWorkFetch(`${base}/rest/v1/rpc/paywork_list_my_referrals`, { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" });
       const friends = await response.json();
       if (!response.ok) throw new Error(friends.message || "Taklif qilgan do‘stlarni yuklab bo‘lmadi.");
       const confirmed = friends.filter(friend => friend.referral_work_started_at && friend.referral_bonus_confirmed).length;
       total.textContent = `Tasdiqlangan bonus: ${(confirmed * 10000).toLocaleString("uz-UZ")} so‘m`;
       list.innerHTML = friends.length ? friends.map(friend => {
         const started = !!friend.referral_work_started_at;
-        const info = [friend.email || friend.phone, friend.age ? `${friend.age} yosh` : "", friend.gender || ""].filter(Boolean).join(" · ");
-        return `<article class="invite-friend"><div class="invite-friend-avatar">${esc((friend.full_name || "D").trim().charAt(0).toUpperCase())}</div><div class="invite-friend-info"><b>${esc(friend.full_name || "Do‘st")}</b><small>${esc(info || (friend.role === "employer" ? "Ish beruvchi" : "Ish izlovchi"))}</small></div><span class="invite-friend-status ${started ? "confirmed" : "pending"}">${started ? "+10 000 so‘m tasdiqlandi" : "Ish boshlashi kutilmoqda"}</span></article>`;
+        const info = [friend.public_id ? `ID: ${friend.public_id}` : "", friend.role === "employer" ? "Ish beruvchi" : "Ish izlovchi"].filter(Boolean).join(" · ");
+        return `<article class="invite-friend"><div class="invite-friend-avatar">${esc((friend.full_name || "D").trim().charAt(0).toUpperCase())}</div><div class="invite-friend-info"><b>${esc(friend.full_name || "Do‘st")}</b><small>${esc(info)}</small></div><span class="invite-friend-status ${started ? "confirmed" : "pending"}">${started ? "+10 000 so‘m tasdiqlandi" : "Ish boshlashi kutilmoqda"}</span></article>`;
       }).join("") : empty("Hozircha taklif kodingiz orqali ro‘yxatdan o‘tgan do‘st yo‘q.");
     } catch (error) { list.innerHTML = empty(error.message || "Takliflar yuklanmadi."); }
   }
