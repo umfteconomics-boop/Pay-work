@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="uz">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f7f8f4">
+  <title>Pay Work akkauntini o‘chirish</title>
+  <style>
+    :root{font-family:Inter,system-ui,-apple-system,"Segoe UI",sans-serif;color:#17231d;background:#f7f8f4}*{box-sizing:border-box}body{margin:0;min-height:100vh;display:grid;place-items:center;padding:24px}.card{width:min(100%,560px);padding:clamp(24px,6vw,42px);border:1px solid #dce5dc;border-radius:24px;background:#fff;box-shadow:0 18px 55px #17321a12}.brand{font-size:22px;font-weight:850;color:#15744d}.brand em{font-style:normal;color:#17231d}h1{font-size:clamp(25px,5vw,34px);line-height:1.15;margin:28px 0 12px}p{line-height:1.6;color:#53645a}.notice{background:#f4f6ef;border-radius:14px;padding:14px 16px;font-size:14px}.field{display:grid;gap:7px;margin:18px 0}.field label{font-weight:700;font-size:14px}.field input{height:48px;border:1px solid #cbd8cd;border-radius:11px;padding:0 13px;font:inherit}.actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:20px}button,.link{min-height:46px;border:0;border-radius:11px;padding:0 16px;font-family:inherit;font-size:14px;font-weight:700;cursor:pointer;text-decoration:none;display:inline-flex;align-items:center;justify-content:center}.primary{background:#13774d;color:white}.secondary{background:#eef3ed;color:#1c3628}.danger{background:#b42318;color:white}.status{min-height:24px;margin:14px 0 0;color:#53645a;font-size:14px}.status.error{color:#b42318}.status.ok{color:#13774d}.divider{height:1px;background:#e5ebe5;margin:24px 0}button:disabled{opacity:.5;cursor:wait}small{display:block;margin-top:20px;color:#67766b;line-height:1.5}
+  </style>
+</head>
+<body>
+  <main class="card">
+    <div class="brand">↗ pay<em>work</em></div>
+    <h1>Akkauntni o‘chirish</h1>
+    <p>Pay Work akkauntingizni va akkaunt bilan bog‘liq ma’lumotlarni o‘chirish so‘rovini shu sahifadan yuborishingiz mumkin.</p>
+    <div class="notice">Davom etish uchun o‘chiriladigan akkauntga kirib, shaxsingizni tasdiqlang. So‘rov bajarilgach, o‘chirishni qaytarib bo‘lmaydi.</div>
+    <div class="field"><label for="email">Akkaunt emaili</label><input id="email" type="email" autocomplete="email" placeholder="name@example.com"></div>
+    <button id="sendCode" class="secondary" type="button">Tasdiqlash kodini yuborish</button>
+    <div class="field"><label for="code">Emailga kelgan kod</label><input id="code" inputmode="numeric" autocomplete="one-time-code" maxlength="12" placeholder="Tasdiqlash kodi"></div>
+    <button id="verifyCode" class="primary" type="button">Kodni tasdiqlash</button>
+    <div class="divider"></div>
+    <div class="actions"><button id="googleLogin" class="secondary" type="button">Google orqali kirish</button><button id="deleteAccount" class="danger" type="button" disabled>Akkauntni butunlay o‘chirish</button></div>
+    <p id="status" class="status" role="status" aria-live="polite"></p>
+    <small>Akkaunt o‘chirish bajarilmasa yoki ma’lumotlaringiz bo‘yicha savol bo‘lsa, ilova ichidagi Bog‘lanish bo‘limi orqali yordam so‘rang.</small>
+  </main>
+  <script src="./supabase-config.js"></script>
+  <script>
+    const config = window.PAYWORK_CONFIG || {};
+    const base = (config.supabaseUrl || "").replace(/\/$/, "");
+    let accessToken = "";
+    const status = document.getElementById("status");
+    const setStatus = (message, kind = "") => { status.textContent = message; status.className = `status ${kind}`; };
+    const headers = () => ({ apikey: config.publishableKey, "Content-Type": "application/json" });
+    const hash = new URLSearchParams(location.hash.replace(/^#/, ""));
+    if (hash.get("access_token")) {
+      accessToken = hash.get("access_token");
+      history.replaceState({}, document.title, `${location.pathname}${location.search}`);
+      document.getElementById("deleteAccount").disabled = false;
+      setStatus("Akkaunt tasdiqlandi. Endi o‘chirishni davom ettirishingiz mumkin.", "ok");
+    }
+    document.getElementById("sendCode").addEventListener("click", async () => {
+      const email = document.getElementById("email").value.trim();
+      if (!email) return setStatus("Avval akkaunt emailini kiriting.", "error");
+      setStatus("Tasdiqlash kodi yuborilmoqda…");
+      try {
+        const response = await fetch(`${base}/auth/v1/otp`, { method: "POST", headers: headers(), body: JSON.stringify({ email, create_user: false }) });
+        const result = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(result.msg || result.message || "Kod yuborilmadi. Emailni tekshirib qayta urinib ko‘ring.");
+        setStatus("Kod yuborildi. Emailingizni tekshiring.", "ok");
+      } catch (error) { setStatus(error.message, "error"); }
+    });
+    document.getElementById("verifyCode").addEventListener("click", async () => {
+      const email = document.getElementById("email").value.trim(), token = document.getElementById("code").value.trim();
+      if (!email || !token) return setStatus("Email va tasdiqlash kodini kiriting.", "error");
+      setStatus("Kod tekshirilmoqda…");
+      try {
+        const response = await fetch(`${base}/auth/v1/verify`, { method: "POST", headers: headers(), body: JSON.stringify({ email, token, type: "email" }) });
+        const result = await response.json().catch(() => ({}));
+        if (!response.ok || !result.access_token) throw new Error(result.msg || result.message || "Kod noto‘g‘ri yoki muddati tugagan.");
+        accessToken = result.access_token;
+        document.getElementById("deleteAccount").disabled = false;
+        setStatus("Email tasdiqlandi. Akkauntni o‘chirishni davom ettirishingiz mumkin.", "ok");
+      } catch (error) { setStatus(error.message, "error"); }
+    });
+    document.getElementById("googleLogin").addEventListener("click", () => {
+      if (!base || !config.publishableKey) return setStatus("Kirish xizmati sozlanmagan.", "error");
+      const target = new URL(`${base}/auth/v1/authorize`);
+      target.searchParams.set("provider", "google");
+      target.searchParams.set("redirect_to", location.href.split("#")[0]);
+      target.searchParams.set("apikey", config.publishableKey);
+      location.href = target.href;
+    });
+    document.getElementById("deleteAccount").addEventListener("click", async event => {
+      if (!accessToken) return setStatus("Avval email yoki Google orqali tasdiqlang.", "error");
+      if (!confirm("Pay Work akkauntingiz va unga bog‘liq ma’lumotlar butunlay o‘chiriladi. Davom etasizmi?")) return;
+      event.currentTarget.disabled = true;
+      setStatus("Akkaunt o‘chirilmoqda…");
+      try {
+        const response = await fetch(`${base}/functions/v1/delete-account`, { method: "POST", headers: { ...headers(), Authorization: `Bearer ${accessToken}` }, body: "{}" });
+        const result = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(result.error || "Akkauntni o‘chirib bo‘lmadi.");
+        accessToken = "";
+        setStatus("Pay Work akkauntingiz o‘chirildi.", "ok");
+      } catch (error) { event.currentTarget.disabled = false; setStatus(error.message, "error"); }
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,14 @@
+{
+  "id": "./",
+  "name": "Pay Work — Kunlik va soatbay ishlar",
+  "short_name": "Pay Work",
+  "description": "O‘zingizga mos kunlik, soatbay va masofaviy ishlarni toping.",
+  "lang": "uz-UZ",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#f7f8f4",
+  "theme_color": "#f7f8f4",
+  "icons": [{ "src": "./icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }]
+}
